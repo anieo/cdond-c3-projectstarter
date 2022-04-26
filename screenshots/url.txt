@@ -1,0 +1,9 @@
+https://github.com/anieo/cdond-c3-projectstarter
+
+http://udapeople-e64ccba.s3-website-us-east-1.amazonaws.com/#/employees
+
+dz7rizcgf7c17.cloudfront.net/#/employees/new
+
+http://107.21.70.94:3030/api/status
+
+http://54.226.168.183:9090/graph
