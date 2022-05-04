@@ -12,7 +12,9 @@
   shell: |
     cd /home/ubuntu/
     npm install
-
+    npm install
+    pm2 stop default
+    pm2 start npm -- start
 # - name: Build Node
 #   shell: |
 #     cd /home/ubuntu/
@@ -23,12 +25,16 @@
 #     cd /home/ubuntu/
 #     pm2 stop default
 
-- name: Start backend with pm2
-  shell: |
-    cd /home/ubuntu/
-    export $(cat .env | xargs) && rails c
-    pm2 start npm -- start --update-env
+# - name: Start backend with pm2
+#   shell: |
+#     cd /home/ubuntu/
+#     export $(cat .env | xargs) && rails 
 
+#     pm2 start npm -- start --update-env
+    
+# - name: print message
+#   debug:
+#     msg: "{{ execute_node.stdout_lines }}"
 # - name: save your list of processes
 #   shell: |
 #     cd /home/ubuntu/
