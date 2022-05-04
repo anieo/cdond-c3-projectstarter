@@ -32,6 +32,8 @@ commands:
           name: Revert migrations
           when: on_fail
           command: |
+            ls -l
+            cd backend
             # Curl command here to see if there was a successful migration associated with the workflow id, store result in SUCCESS variable
             SUCCESS=`curl --insecure https://kvdb.io/${kvd_token}/migration_<<parameters.workflow_id>>`
             echo $SUCCESS
@@ -69,7 +71,7 @@ commands:
             npm install -g typescript
 imgdefault: &imgdefault
   docker:
-   - image: circleci/node:13.8.0
+   - image: cimg/node:13.8.0
      environment:
         VERSION: "1"
         TYPEORM_CONNECTION: $TYPEORM_CONNECTION
@@ -330,8 +332,8 @@ jobs:
               echo "TYPEORM_DATABASE=${TYPEORM_DATABASE}" >> .env
               echo "TYPEORM_MIGRATIONS=${TYPEORM_MIGRATIONS}" >> .env
               echo "TYPEORM_MIGRATIONS_DIR=${TYPEORM_MIGRATIONS_DIR}" >> .env
-              echo "TYPEORM_MIGRATIONS_DIRs=${TYPEORM_MIGRATIONS_DIR}s" >> .env
               cat .env
+              echo $TYPEORM_MIGRATIONS_DIR
 
       - run:
           name: Run migrations
