@@ -42,7 +42,7 @@ commands:
             fi
 
   install_dependencies:
-    description: Installs Python3, Ansible, AWSCLI, Node, NPM , py3-pip
+    description: Installs Python3, Ansible, AWSCLI, , py3-pip
     steps:
       - run:
           name: Install ansible
@@ -60,20 +60,20 @@ commands:
           name: Install tar and gzip and curl jq
           command: |
             apk add tar gzip curl jq wget
-      - run:
-          name: Install NPM and Node
-          command: |            
-            apk add --update nodejs npm
-            npm --version
-            node -v
-            npm install -g typescript
+      # - run:
+      #     name: Install NPM and Node
+      #     command: |            
+      #       apk add --update nodejs npm
+      #       npm --version
+      #       node -v
+      #       npm install -g typescript
 imgdefault: &imgdefault
   docker:
    - image: circleci/node:13.8.0
 
 orbs:
-  slack: circleci/slack@4.1
-  aws-cli: circleci/aws-cli@1.3.0
+  slack: circleci/slack@4.8.0
+  aws-cli: circleci/aws-cli@2.1.0
   jq: circleci/jq@2.2.0
 
 jobs:
@@ -162,7 +162,8 @@ jobs:
       - run:
           name: front-end scan
           command: |
-            cd backend
+            cd frontend
+            npm update
             npm install
             npm audit fix --audit-level=critical --force
             npm audit fix --force
@@ -182,6 +183,8 @@ jobs:
           name: Back-end scan
           command: |
             cd backend
+            npm update
+
             npm install
             npm audit fix --audit-level=critical --force
             npm audit fix --force
@@ -237,9 +240,7 @@ jobs:
     docker:
     - image: python:alpine3.15 # that supports Ansible
       environment:
-          NODE_ENV: "production"
           VERSION: "1"
-          ENVIRONMENT: "production"
           TYPEORM_CONNECTION: $TYPEORM_CONNECTION
           TYPEORM_HOST: $TYPEORM_HOST
           TYPEORM_USERNAME: $TYPEORM_USERNAME
@@ -274,27 +275,18 @@ jobs:
           workflow_id: "${CIRCLE_WORKFLOW_ID:0:7}"
 
   run-migrations:
-    docker:
-    - image: python:alpine3.15 # that supports NodeJS
-      environment:
-        NODE_ENV: "production"
-        VERSION: "1"
-        ENVIRONMENT: "production"
-        TYPEORM_CONNECTION: $TYPEORM_CONNECTION
-        TYPEORM_HOST: $TYPEORM_HOST
-        TYPEORM_USERNAME: $TYPEORM_USERNAME
-        TYPEORM_PASSWORD: $TYPEORM_PASSWORD
-        TYPEORM_DATABASE: $TYPEORM_DATABASE
-        TYPEORM_PORT: $TYPEORM_PORT
-        TYPEORM_ENTITIES: $TYPEORM_ENTITIES
-        ANSIBLE_HOST_KEY_CHECKING: False
+    <<: *imgdefault 
     steps:
+      # Checkout code from git
       - checkout
-      - install_dependencies
-      - attach_workspace:
-          at: ~/
       - restore_cache:
           keys: [backend-build]
+      - run:
+          name: Install dependencies
+          command: |
+            sudo apt update
+            sudo apt upgrade -y
+            sudo apt install -y awscli
       - run:
           name: Run migrations
           command: |
@@ -308,11 +300,16 @@ jobs:
           name: Send migration results to memstash
           command: |
             echo "CIRCLE_WORKFLOW_ID: ${CIRCLE_WORKFLOW_ID:0:7}"
+            cat ~/project/backend/migrations_dump.txt
             cd backend
             if grep -q "has been executed successfully." migrations_dump.txt
             then
-                curl https://kvdb.io/${kvd_token}/migration_${CIRCLE_WORKFLOW_ID:0:7} -d '1'
-            fi
+              curl https://kvdb.io/${kvd_token}/migration_${CIRCLE_WORKFLOW_ID:0:7} -d '1'
+              echo "MIGRATION WAS SUCCESSFUL"
+            else
+              curl https://kvdb.io/${kvd_token}/migration_${CIRCLE_WORKFLOW_ID:0:7} -d '0'
+              echo "MIGRATION FAILED"
+            fi  
      # Here's where you will add some code to rollback on failure
       - slack/notify:
           event: fail
@@ -324,11 +321,8 @@ jobs:
 
   deploy-frontend:
     docker:
-    - image: python:alpine3.15 # that supports NodeJS
+    - image: circleci/node:13.8.0 # that supports NodeJS
       environment:
-        NODE_ENV: "production"
-        VERSION: "1"
-        ENVIRONMENT: "production"
         TYPEORM_CONNECTION: $TYPEORM_CONNECTION
         TYPEORM_HOST: $TYPEORM_HOST
         TYPEORM_USERNAME: $TYPEORM_USERNAME
@@ -339,7 +333,15 @@ jobs:
         ANSIBLE_HOST_KEY_CHECKING: False # that supports AWS CLI
     steps:
       - checkout
-      - install_dependencies
+      - attach_workspace:
+          at: ~/
+      - run:
+          name: Install dependencies
+          command: |
+            sudo apt update
+            sudo apt upgrade -y
+            sudo apt install -y awscli
+            sudo apt install tar gzip -y
       - run:
           name: Get backend url
           command: |
@@ -356,6 +358,7 @@ jobs:
           name: Deploy frontend objects
           command: |
             cd frontend
+            cat .env
             npm install
             npm run build
             tar -czf artifact-"${CIRCLE_WORKFLOW_ID:0:7}".tar.gz dist
@@ -372,11 +375,8 @@ jobs:
 
   deploy-backend:
     docker:
-    - image: python:3.7-alpine3.11 # that supports Ansible
+    - image: circleci/node:13.8.0 # that supports NodeJS
       environment:
-        NODE_ENV: "production"
-        VERSION: "1"
-        ENVIRONMENT: "production"
         TYPEORM_CONNECTION: $TYPEORM_CONNECTION
         TYPEORM_HOST: $TYPEORM_HOST
         TYPEORM_USERNAME: $TYPEORM_USERNAME
@@ -387,22 +387,27 @@ jobs:
         ANSIBLE_HOST_KEY_CHECKING: False
     steps:
       - checkout
-      - install_dependencies
       - add_ssh_keys:
           fingerprints: ["31:15:91:9c:f5:09:f2:cb:04:af:21:79:2e:16:15:68"]
       - attach_workspace:
           at: ~/
-      - run: 
-          name: disbale ssh checking
+      - run:
+          name: Install dependencies
           command: |
-                export ANSIBLE_HOST_KEY_CHECKING=False
-      - run: cat .circleci/ansible/inventory.txt 
+            sudo apt update
+            sudo apt upgrade -y
+            sudo apt install software-properties-common -y
+            sudo add-apt-repository --yes --update ppa:ansible/ansible
+            sudo apt install ansible
+            sudo apt install -y awscli
+            sudo apt install tar gzip -y
       - run:
           name: Deploy backend
           command: |
             cd backend
             npm install
             npm run build
+            cp package* ./dist
             cd ..
             tar -C backend -czf artifact.tar.gz .
             cd .circleci/ansible
@@ -462,10 +467,9 @@ jobs:
           workflow_id: "${CIRCLE_WORKFLOW_ID:0:7}"
   cloudfront-update:
     docker:
-    - image: python:3.7-alpine3.11 # that supports AWS CLI
+    - image: amazon/aws-cli # that supports AWS CLI
     steps:
       - checkout
-      - install_dependencies
       - run:
           name: Update cloudfront distribution
           command: |
@@ -492,6 +496,7 @@ jobs:
       docker:
         - image: amazon/aws-cli # that supports AWS CLI
       steps:
+        - checkout
         # Checkout code from git
         - run:
             name: Get old stack workflow id
