@@ -302,7 +302,6 @@ jobs:
     <<: *imgdefault # that supports NodeJS
     steps:
       - checkout
-      - install_dependencies
       - attach_workspace:
           at: ~/
       - restore_cache:
