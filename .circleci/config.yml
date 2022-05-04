@@ -299,8 +299,7 @@ jobs:
           workflow_id: "${CIRCLE_WORKFLOW_ID:0:7}"
 
   run-migrations:
-    docker:
-    - image: python:alpine3.15 # that supports NodeJS
+    <<: *imgdefault # that supports NodeJS
     steps:
       - checkout
       - install_dependencies
@@ -321,7 +320,7 @@ jobs:
               echo "TYPEORM_DATABASE=${TYPEORM_DATABASE}" >> .env
               echo "TYPEORM_MIGRATIONS=${TYPEORM_MIGRATIONS}" >> .env
               echo "TYPEORM_MIGRATIONS_DIR=${TYPEORM_MIGRATIONS_DIR}" >> .env
-              cp .env ../
+              echo "TYPEORM_MIGRATIONS_DIRs=${TYPEORM_MIGRATIONS_DIR}s" >> .env
               cat .env
 
       - run:
