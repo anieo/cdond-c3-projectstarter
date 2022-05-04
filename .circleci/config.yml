@@ -42,7 +42,7 @@ commands:
             fi
 
   install_dependencies:
-    description: Installs Python3, Ansible, AWSCLI, , py3-pip
+    description: Installs Python3, Ansible, AWSCLI,  py3-pip
     steps:
       - run:
           name: Install ansible
@@ -60,13 +60,13 @@ commands:
           name: Install tar and gzip and curl jq
           command: |
             apk add tar gzip curl jq wget
-      # - run:
-      #     name: Install NPM and Node
-      #     command: |            
-      #       apk add --update nodejs npm
-      #       npm --version
-      #       node -v
-      #       npm install -g typescript
+      - run:
+          name: Install NPM and Node
+          command: |            
+            apk add --update nodejs npm
+            npm --version
+            node -v
+            npm install -g typescript
 imgdefault: &imgdefault
   docker:
    - image: circleci/node:13.8.0
@@ -285,19 +285,15 @@ jobs:
           workflow_id: "${CIRCLE_WORKFLOW_ID:0:7}"
 
   run-migrations:
-    <<: *imgdefault 
+    docker:
+    - image: python:alpine3.15 # that supports NodeJS
     steps:
-      # Checkout code from git
       - checkout
+      - install_dependencies
+      - attach_workspace:
+          at: ~/
       - restore_cache:
           keys: [backend-build]
-      - run:
-          name: Install aws dependencies
-          command: |
-            sudo apt update && sudo apt install -yy less
-            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-            unzip awscliv2.zip
-            sudo ./aws/install
       - run:
           name: enviroment variables
           command:  |
