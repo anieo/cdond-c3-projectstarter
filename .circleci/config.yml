@@ -35,7 +35,7 @@ commands:
             # Curl command here to see if there was a successful migration associated with the workflow id, store result in SUCCESS variable
             SUCCESS=`curl --insecure https://kvdb.io/${kvd_token}/migration_<<parameters.workflow_id>>`
             echo $SUCCESS
-            if(( "$SUCCESS"==1 )); then
+            if [[ "$SUCCESS"==1 ]]; then
               cd backend
               npm i
               npm run migration:revert
@@ -312,6 +312,7 @@ jobs:
               echo "TYPEORM_MIGRATIONS=${TYPEORM_MIGRATIONS}" >> .env
               echo "TYPEORM_MIGRATIONS_DIR=${TYPEORM_MIGRATIONS_DIR}" >> .env
               cp .env ../
+              cat .env
       - run:
           name: Run migrations
           command: |
